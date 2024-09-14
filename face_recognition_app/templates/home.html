@@ -1,0 +1,136 @@
+<!-- face_recognition_app/templates/home.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face Recognition</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        #video-container {
+            margin-bottom: 20px;
+        }
+
+        #result {
+            margin-top: 20px;
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #007bff;
+        }
+
+        #video {
+            width: 100%;
+            max-width: 400px;
+            border: 2px solid #007bff;
+            border-radius: 5px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        button {
+            margin-top: 20px;
+            padding: 15px 30px;
+            font-size: 1.1em;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+    <script>
+        function takePicture() {
+            const video = document.getElementById('video');
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+            canvas.toBlob(function(blob) {
+                const formData = new FormData();
+                formData.append('image', blob);
+    
+                // Получаем CSRF-токен из метатега
+                const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    
+                // Добавляем CSRF-токен в заголовок запроса
+                fetch('/recognize_face/', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrftoken
+                    },
+                    body: formData,
+                    credentials: 'same-origin' // Устанавливаем куки
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // После получения имени распознанного лица, отправляем его на сервер Go
+                    sendDataToGoServer(data.name);
+                })
+                .catch(error => {
+                    console.error('Ошибка:', error);
+                });
+            }, 'image/jpeg');
+        }
+    
+        function sendDataToGoServer(name) {
+            // Отправляем данные на сервер Go
+            fetch('http://127.0.0.1:8080/recognize', {
+                method: 'POST',
+                body: JSON.stringify({ name: name }),
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Ответ от сервера Go:', data);
+                // Здесь вы можете обработать ответ от сервера Go
+            })
+            .catch(error => {
+                console.error('Ошибка:', error);
+            });
+        } 
+    </script>
+</head>
+<body>
+    <div class="container">
+        <div id="video-container">
+            <video id="video" autoplay></video>
+        </div>
+        <!-- Добавляем метатег CSRF-токена -->
+        <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+        <button onclick="takePicture()">Сделать снимок</button>
+        <div id="result"></div>
+    </div>
+    <script>
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => video.srcObject = stream)
+            .catch(error => console.error('Ошибка:', error));
+    </script>
+    
+</body>

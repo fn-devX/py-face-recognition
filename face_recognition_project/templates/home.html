@@ -1,0 +1,44 @@
+<!-- face_recognition_app/templates/home.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face Recognition</title>
+    <script>
+        function takePicture() {
+            const video = document.getElementById('video');
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+            canvas.toBlob(function(blob) {
+                const formData = new FormData();
+                formData.append('image', blob);
+                fetch('/recognize_face/', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    alert('Распознанное имя: ' + data.name);
+                })
+                .catch(error => {
+                    console.error('Ошибка:', error);
+                });
+            }, 'image/jpeg');
+        }
+    </script>
+</head>
+<body>
+    <h1>Face Recognition</h1>
+    <video id="video" autoplay></video>
+    <br>
+    <button onclick="takePicture()">Сделать снимок</button>
+    <script>
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => video.srcObject = stream)
+            .catch(error => console.error('Ошибка:', error));
+    </script>
+</body>
+</html>
